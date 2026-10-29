@@ -62,6 +62,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Inventory database and SQLite sidecar files
+inventory.db
+inventory.db-*
+
 # Flask stuff:
 instance/
 .webassets-cache
