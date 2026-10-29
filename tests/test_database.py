@@ -10,14 +10,12 @@ def test_connection_enables_foreign_keys_and_named_rows(connection):
     assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
     assert connection.execute("SELECT ? AS name", ("Hammer",)).fetchone()["name"] == "Hammer"
 
-
 def test_connect_uses_inventory_db(monkeypatch, tmp_path):
     path = tmp_path / "inventory.db"
     monkeypatch.setenv("INVENTORY_DB", str(path))
     with closing(connect()) as connection:
         setup_database(connection)
     assert path.exists()
-
 
 def test_schema_creates_five_strict_tables(connection):
     tables = {
@@ -32,13 +30,11 @@ def test_schema_creates_five_strict_tables(connection):
     assert columns["id"]["pk"] == 1
     assert columns["sku"]["pk"] == 0
 
-
 def test_rerunning_schema_preserves_data(connection, product_id):
     setup_database(connection)
     assert connection.execute("SELECT COUNT(*) FROM products").fetchone()[0] == 1
     row = connection.execute("SELECT sku FROM products WHERE id = ?", (product_id,)).fetchone()
     assert row["sku"] == "HAM-001"
-
 
 @pytest.mark.parametrize(
     ("position", "value"),
@@ -57,7 +53,6 @@ def test_invalid_product_fields_are_rejected(connection, product_id, position, v
             values,
         )
 
-
 def test_invalid_movement_reason_is_rejected(connection, product_id):
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute(
@@ -65,7 +60,6 @@ def test_invalid_movement_reason_is_rejected(connection, product_id):
             "VALUES (?, ?, ?, ?, ?)",
             (product_id, "HAM-001", 1, "invalid", "2026-10-29T12:00:00+00:00"),
         )
-
 
 def test_sale_items_reference_id_and_prevent_sold_product_deletion(connection, product_id):
     sale_id = connection.execute(
@@ -77,7 +71,6 @@ def test_sale_items_reference_id_and_prevent_sold_product_deletion(connection, p
         connection.execute(statement, (sale_id, 999, 1, 1599))
     with pytest.raises(sqlite3.IntegrityError):
         connection.execute("DELETE FROM products WHERE id = ?", (product_id,))
-
 
 def test_deleting_unsold_product_preserves_sku_snapshot(connection, product_id):
     connection.execute(
