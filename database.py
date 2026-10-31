@@ -89,3 +89,54 @@ def search_products(connection, text="", category=None, max_price=None, in_stock
         sql += " AND p.quantity <= p.reorder_level"
     sql += " ORDER BY p.name"
     return connection.execute(sql, params).fetchall()
+
+"""
+Write four reports, each a function that returns rows:
+Stock value by supplier: the supplier name and the total value of its stock (price times quantity), highest first.
+Low stock: every product at or below its reorder level, with how many units short of the level it is.
+Sales by product: each product with the units sold and the revenue, highest revenue first.
+Never sold: products that appear in no sale.
+
+"""
+def stock_value_report(connection):
+    """Return supplier stock values in cents, highest first."""
+    return connection.execute(
+        "SELECT s.name AS supplier_name, "
+        "COALESCE(SUM(p.price_cents * p.quantity), 0) AS stock_value_cents "
+        "FROM suppliers s "
+        "LEFT JOIN products p "
+            "ON p.supplier_id = s.id "
+        "GROUP BY s.id, s.name "
+        "ORDER BY stock_value_cents DESC, s.name"
+    ).fetchall()
+
+
+def low_stock_report(connection):
+    """Return products at or below reorder level with their units short."""
+    return connection.execute(
+        "SELECT p.id, p.sku, p.name, p.quantity, p.reorder_level, "
+        "p.reorder_level - p.quantity AS units_short "
+        "FROM products p WHERE p.quantity <= p.reorder_level "
+        "ORDER BY p.name"
+    ).fetchall()
+
+
+def sales_report(connection):
+    """Return all products with units sold and historical revenue in cents."""
+    return connection.execute(
+        "SELECT p.id, p.sku, p.name, "
+        "COALESCE(SUM(si.quantity), 0) AS units_sold, "
+        "COALESCE(SUM(si.quantity * si.unit_price_cents), 0) AS revenue_cents "
+        "FROM products p LEFT JOIN sale_items si ON si.product_id = p.id "
+        "GROUP BY p.id, p.sku, p.name "
+        "ORDER BY revenue_cents DESC, p.name"
+    ).fetchall()
+
+
+def never_sold_report(connection):
+    """Return products that have never appeared in a sale, sorted by name."""
+    return connection.execute(
+        "SELECT p.id, p.sku, p.name "
+        "FROM products p LEFT JOIN sale_items si ON si.product_id = p.id "
+        "WHERE si.product_id IS NULL ORDER BY p.name"
+    ).fetchall()
