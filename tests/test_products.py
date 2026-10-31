@@ -7,7 +7,6 @@ from database import (
     change_price,
     delete_product,
     get_product,
-    search_products,
 )
 from seed_db import seed_database
 
