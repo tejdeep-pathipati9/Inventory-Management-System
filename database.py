@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().with_name("inventory.db")
@@ -140,3 +141,27 @@ def never_sold_report(connection):
         "FROM products p LEFT JOIN sale_items si ON si.product_id = p.id "
         "WHERE si.product_id IS NULL ORDER BY p.name"
     ).fetchall()
+
+
+def restock_product(connection, product_id, amount, created_at=None):
+    """Increase stock and log the movement atomically; return the new quantity."""
+    if amount <= 0:
+        raise ValueError("Restock amount must be positive.")
+    if created_at is None:
+        created_at = datetime.now(UTC).isoformat()
+    with connection:
+        product = get_product(connection, product_id)
+        if product is None:
+            raise ValueError(f"No product with id {product_id}")
+        connection.execute(
+            "UPDATE products SET quantity = quantity + ? WHERE id = ?",
+            (amount, product_id),
+        )
+        connection.execute(
+            "INSERT INTO stock_movements "
+            "(product_id, sku_snapshot, change, reason, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (product_id, product["sku"], amount, "restock", created_at),
+        )
+        updated_quantity = get_product(connection, product_id)["quantity"]
+    return updated_quantity
