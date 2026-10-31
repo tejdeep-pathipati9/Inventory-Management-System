@@ -2,7 +2,14 @@ import sqlite3
 
 import pytest
 
-from database import add_product, get_product
+from database import (
+    add_product,
+    change_price,
+    delete_product,
+    get_product,
+    search_products,
+)
+from seed_db import seed_database
 
 
 def test_add_product_returns_new_id(connection, product_id):
@@ -32,3 +39,14 @@ def test_unknown_supplier_is_refused(connection):
 def test_negative_values_are_refused(connection, product_id, price_cents, quantity):
     with pytest.raises(sqlite3.IntegrityError):
         add_product(connection, "NEW-001", "Hammer", "Tools", 1, price_cents, quantity, 2)
+
+
+def test_change_price_and_delete_product(connection):
+    seed_database(connection)
+    assert change_price(connection, 1, 1299) is True
+    assert get_product(connection, 1)["price_cents"] == 1299
+    assert change_price(connection, 999, 1299) is False
+    with pytest.raises(sqlite3.IntegrityError):
+        delete_product(connection, 1)
+    assert delete_product(connection, 11) is True
+    assert get_product(connection, 11) is None
