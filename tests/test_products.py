@@ -7,6 +7,7 @@ from database import (
     change_price,
     delete_product,
     get_product,
+    search_products,
 )
 from seed_db import seed_database
 
@@ -49,3 +50,40 @@ def test_change_price_and_delete_product(connection):
         delete_product(connection, 1)
     assert delete_product(connection, 11) is True
     assert get_product(connection, 11) is None
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("cLaW", ["HAM-001"]),
+        ("sCr-001", ["SCR-001"]),
+        ("fOrGe", ["WRE-001", "HAM-001", "SCR-001"]),
+    ],
+)
+def test_search_fields_ignore_case_and_sort_by_name(connection, text, expected):
+    seed_database(connection)
+    rows = search_products(connection, text)
+    assert [row["sku"] for row in rows] == expected
+
+
+def test_search_filters_and_sql_safety(connection):
+    seed_database(connection)
+    with connection:
+        connection.execute("UPDATE products SET quantity = ? WHERE id = ?", (0, 1))
+
+    rows = search_products(connection, category="Tools")
+    assert [row["id"] for row in rows] == [3, 1, 4, 2]
+    rows = search_products(connection, max_price=299)
+    assert [row["id"] for row in rows] == [10, 9, 12]
+    rows = search_products(connection, in_stock_only=True)
+    assert len(rows) == 11
+    assert all(row["quantity"] > 0 for row in rows)
+    rows = search_products(connection, low_stock_only=True)
+    assert [row["id"] for row in rows] == [1, 7, 10, 2]
+    rows = search_products(
+        connection, "FORGE", category="Tools", max_price=700,
+        in_stock_only=True, low_stock_only=True,
+    )
+    assert [row["id"] for row in rows] == [2]
+    assert search_products(connection, "'; DROP TABLE products; --") == []
+    assert len(search_products(connection)) == 12
