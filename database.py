@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().with_name("inventory.db")
@@ -140,3 +141,68 @@ def never_sold_report(connection):
         "FROM products p LEFT JOIN sale_items si ON si.product_id = p.id "
         "WHERE si.product_id IS NULL ORDER BY p.name"
     ).fetchall()
+
+
+def _change_stock(connection, product_id, change, reason, created_at):
+    """Update stock and its log inside the caller's transaction, without committing."""
+    product = get_product(connection, product_id)
+    if product is None:
+        raise ValueError(f"No product with id {product_id}")
+    connection.execute(
+        "UPDATE products SET quantity = quantity + ? WHERE id = ?",
+        (change, product_id),
+    )
+    connection.execute(
+        "INSERT INTO stock_movements "
+        "(product_id, sku_snapshot, change, reason, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (product_id, product["sku"], change, reason, created_at),
+    )
+    return get_product(connection, product_id)["quantity"]
+
+
+def restock_product(connection, product_id, amount, created_at=None):
+    """Increase stock and log the movement atomically; return the new quantity."""
+    if amount <= 0:
+        raise ValueError("Restock amount must be positive.")
+    if created_at is None:
+        created_at = datetime.now(UTC).isoformat()
+    with connection:
+        updated_quantity = _change_stock(connection, product_id, amount, "restock", created_at)
+    return updated_quantity
+
+
+def adjust_stock(connection, product_id, change, created_at=None):
+    """Apply a signed stock change and log it atomically; return the new quantity."""
+    if change == 0:
+        raise ValueError("Adjustment must not be zero.")
+    if created_at is None:
+        created_at = datetime.now(UTC).isoformat()
+    with connection:
+        updated_quantity = _change_stock(connection, product_id, change, "adjustment", created_at)
+    return updated_quantity
+
+
+def record_sale(connection, items, created_at=None):
+    """Save product/quantity pairs, stock reductions, and movements as one transaction."""
+    if not items:
+        raise ValueError("A sale must contain at least one item.")
+    if created_at is None:
+        created_at = datetime.now(UTC).isoformat()
+    with connection:
+        sale_id = connection.execute(
+            "INSERT INTO sales (sale_date) VALUES (?)", (created_at,)
+        ).lastrowid
+        for product_id, quantity in items:
+            if quantity <= 0:
+                raise ValueError("Sale quantities must be positive.")
+            product = get_product(connection, product_id)
+            if product is None:
+                raise ValueError(f"No product with id {product_id}")
+            connection.execute(
+                "INSERT INTO sale_items (sale_id, product_id, quantity, unit_price_cents) "
+                "VALUES (?, ?, ?, ?)",
+                (sale_id, product_id, quantity, product["price_cents"]),
+            )
+            _change_stock(connection, product_id, -quantity, "sale", created_at)
+    return sale_id
