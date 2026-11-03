@@ -1,9 +1,7 @@
 import sqlite3
 from contextlib import closing
-
 import pytest
-
-from database import (
+from inventory_db import (
     backup_database,
     change_price,
     connect,

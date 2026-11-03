@@ -1,4 +1,4 @@
-from database import (
+from inventory_db import (
     change_price,
     low_stock_report,
     never_sold_report,

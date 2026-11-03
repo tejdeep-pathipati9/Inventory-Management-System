@@ -1,16 +1,12 @@
 from contextlib import closing
-
 import pytest
-
-from database import connect, setup_database
-
+from inventory_db import connect, setup_database
 
 @pytest.fixture
 def connection():
     with closing(connect(":memory:")) as connection:
         setup_database(connection)
         yield connection
-
 
 @pytest.fixture
 def product_id(connection):
