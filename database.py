@@ -1,6 +1,7 @@
 import os
 import sqlite3
-from datetime import UTC, datetime
+from contextlib import closing
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().with_name("inventory.db")
@@ -206,3 +207,16 @@ def record_sale(connection, items, created_at=None):
             )
             _change_stock(connection, product_id, -quantity, "sale", created_at)
     return sale_id
+
+
+def backup_database(connection, backup_folder):
+    """Back up a committed connection to a dated file and return its path."""
+    backup_folder = Path(backup_folder).expanduser()
+    backup_folder.mkdir(parents=True, exist_ok=True)
+    backup_path = backup_folder / f"inventory-{date.today().isoformat()}.db"
+    source_file = connection.execute("PRAGMA database_list").fetchone()["file"]
+    if source_file and backup_path.exists() and backup_path.samefile(source_file):
+        raise ValueError("Choose a backup folder different from the database folder.")
+    with closing(connect(backup_path)) as backup:
+        connection.backup(backup)
+    return backup_path

@@ -3,7 +3,14 @@ from contextlib import closing
 
 import pytest
 
-from database import connect, setup_database
+from database import (
+    backup_database,
+    change_price,
+    connect,
+    get_product,
+    setup_database,
+)
+from seed_db import seed_database
 
 
 def test_connection_enables_foreign_keys_and_named_rows(connection):
@@ -82,3 +89,24 @@ def test_deleting_unsold_product_preserves_sku_snapshot(connection, product_id):
     row = connection.execute("SELECT product_id, sku_snapshot FROM stock_movements").fetchone()
     assert row["product_id"] is None
     assert row["sku_snapshot"] == "HAM-001"
+
+
+def test_backup_integrity_counts_and_restore(connection, tmp_path):
+    counts = seed_database(connection)
+    folder = tmp_path / "backups"
+    path = backup_database(connection, folder)
+    with closing(connect(path)) as backup:
+        assert backup.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        row = backup.execute(
+            "SELECT (SELECT COUNT(*) FROM suppliers) AS suppliers, "
+            "(SELECT COUNT(*) FROM products) AS products, "
+            "(SELECT COUNT(*) FROM sales) AS sales, "
+            "(SELECT COUNT(*) FROM sale_items) AS sale_items, "
+            "(SELECT COUNT(*) FROM stock_movements) AS stock_movements"
+        ).fetchone()
+        assert dict(row) == counts
+        with pytest.raises(ValueError, match="different"):
+            backup_database(backup, folder)
+        change_price(connection, 1, 9999)
+        backup.backup(connection)
+    assert get_product(connection, 1)["price_cents"] == 1599

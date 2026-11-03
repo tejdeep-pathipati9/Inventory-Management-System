@@ -63,8 +63,8 @@ db.sqlite3
 db.sqlite3-journal
 
 # Inventory database and SQLite sidecar files
-inventory.db
-inventory.db-*
+*.db
+*.db-*
 
 # Flask stuff:
 instance/
