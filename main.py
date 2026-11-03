@@ -180,6 +180,13 @@ def _integrity_error_message(error, choice):
 
 
 def run_menu(connection):
+    try:
+        low_stock_count = len(db.low_stock_report(connection))
+        print(f"Low stock alert: {low_stock_count} products are at or below their reorder level.")
+
+    except sqlite3.Error as error:
+        print("Could not load low stock alert:", error)
+
     menu = {
         "1": ("Search products", _search_products),
         "2": ("Look up a product", _look_up_product),
