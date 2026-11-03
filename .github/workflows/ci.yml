@@ -19,3 +19,14 @@ jobs:
         run: pytest
       - name: Check code quality
         run: python -m ruff check .
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build image
+        run: docker build -t inventory:test .
+      - name: Run tests inside the image
+        run: docker run --rm inventory:test python -m pytest -q
+      - name: Check code quality inside the image
+        run: docker run --rm inventory:test python -m ruff check .

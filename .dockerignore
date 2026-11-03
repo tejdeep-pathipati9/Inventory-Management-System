@@ -1,0 +1,17 @@
+.git/
+.venv/
+.idea/
+.vscode/
+.aws/
+.codex/
+.agents/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.db
+*.db-*
+*.sqlite*
+.env
+.env.*
+.DS_Store
