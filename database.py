@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from contextlib import closing
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().with_name("inventory.db")
@@ -209,19 +209,14 @@ def record_sale(connection, items, created_at=None):
     return sale_id
 
 
-def backup_database(connection, backup_path):
-    """Copy a committed database to a different file using SQLite's backup API."""
-    if connection.in_transaction:
-        raise sqlite3.ProgrammingError("Finish the current transaction before backing up.")
-    destination = Path(backup_path).expanduser()
-    if str(destination) == ":memory:":
-        raise ValueError("Choose a file path for the backup.")
+def backup_database(connection, backup_folder):
+    """Back up a committed connection to a dated file and return its path."""
+    backup_folder = Path(backup_folder).expanduser()
+    backup_folder.mkdir(parents=True, exist_ok=True)
+    backup_path = backup_folder / f"inventory-{date.today().isoformat()}.db"
     source_file = connection.execute("PRAGMA database_list").fetchone()["file"]
-    if source_file:
-        source = Path(source_file)
-        if destination.resolve() == source.resolve() or (
-            destination.exists() and destination.samefile(source)
-        ):
-            raise ValueError("Choose a backup file different from the active database.")
-    with closing(connect(destination)) as backup:
+    if source_file and backup_path.exists() and backup_path.samefile(source_file):
+        raise ValueError("Choose a backup folder different from the database folder.")
+    with closing(connect(backup_path)) as backup:
         connection.backup(backup)
+    return backup_path

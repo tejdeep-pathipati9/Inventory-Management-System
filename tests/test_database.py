@@ -93,8 +93,8 @@ def test_deleting_unsold_product_preserves_sku_snapshot(connection, product_id):
 
 def test_backup_integrity_counts_and_restore(connection, tmp_path):
     counts = seed_database(connection)
-    path = tmp_path / "backup.db"
-    backup_database(connection, path)
+    folder = tmp_path / "backups"
+    path = backup_database(connection, folder)
     with closing(connect(path)) as backup:
         assert backup.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         row = backup.execute(
@@ -106,7 +106,7 @@ def test_backup_integrity_counts_and_restore(connection, tmp_path):
         ).fetchone()
         assert dict(row) == counts
         with pytest.raises(ValueError, match="different"):
-            backup_database(backup, path)
+            backup_database(backup, folder)
         change_price(connection, 1, 9999)
         backup.backup(connection)
     assert get_product(connection, 1)["price_cents"] == 1599
