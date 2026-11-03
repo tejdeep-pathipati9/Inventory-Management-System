@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -206,3 +207,21 @@ def record_sale(connection, items, created_at=None):
             )
             _change_stock(connection, product_id, -quantity, "sale", created_at)
     return sale_id
+
+
+def backup_database(connection, backup_path):
+    """Copy a committed database to a different file using SQLite's backup API."""
+    if connection.in_transaction:
+        raise sqlite3.ProgrammingError("Finish the current transaction before backing up.")
+    destination = Path(backup_path).expanduser()
+    if str(destination) == ":memory:":
+        raise ValueError("Choose a file path for the backup.")
+    source_file = connection.execute("PRAGMA database_list").fetchone()["file"]
+    if source_file:
+        source = Path(source_file)
+        if destination.resolve() == source.resolve() or (
+            destination.exists() and destination.samefile(source)
+        ):
+            raise ValueError("Choose a backup file different from the active database.")
+    with closing(connect(destination)) as backup:
+        connection.backup(backup)
