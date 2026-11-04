@@ -1,5 +1,6 @@
 import sqlite3
 from contextlib import closing
+
 from inventory_db import connect, setup_database
 
 SUPPLIERS = [
