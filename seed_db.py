@@ -1,7 +1,7 @@
 import sqlite3
 from contextlib import closing
 
-from database import connect, setup_database
+from inventory_db import connect, setup_database
 
 SUPPLIERS = [
     (1, "Forge Tools"),

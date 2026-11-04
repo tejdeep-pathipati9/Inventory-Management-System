@@ -211,7 +211,11 @@ def record_sale(connection, items, created_at=None):
 
 def backup_database(connection, backup_folder):
     """Back up a committed connection to a dated file and return its path."""
-    backup_folder = Path(backup_folder).expanduser()
+    try:
+        backup_folder = Path(backup_folder).expanduser()
+    except RuntimeError as error:
+        raise ValueError("Could not resolve the backup folder. Enter a valid folder path.") from error
+    
     backup_folder.mkdir(parents=True, exist_ok=True)
     backup_path = backup_folder / f"inventory-{date.today().isoformat()}.db"
     source_file = connection.execute("PRAGMA database_list").fetchone()["file"]

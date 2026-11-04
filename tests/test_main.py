@@ -1,6 +1,7 @@
 import pytest
 
 import main
+from seed_db import seed_database
 
 
 def test_prices_use_whole_cents():
@@ -26,3 +27,16 @@ def test_menu_recovers_from_bad_numbers_and_duplicate_sku(
     assert "whole number" in output
     assert "SKU already exists" in output
     assert "Goodbye" in output
+
+
+def test_menu_shows_low_stock_count_once_at_startup(connection, monkeypatch, capsys):
+    seed_database(connection)
+    answers = iter(["invalid", "0"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+
+    main.run_menu(connection)
+
+    output = capsys.readouterr().out
+    banner = "Low stock alert: 3 products are at or below their reorder level."
+    assert output.count(banner) == 1
+    assert output.index(banner) < output.index("Inventory management")

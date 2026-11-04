@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from database import (
+from inventory_db import (
     add_product,
     adjust_stock,
     change_price,
