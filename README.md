@@ -414,27 +414,15 @@ Use the 1.1.0 image with the same volume to move forward again.
 
 ## Self-review
 
-Technical draft to personalize before submission:
+Keeping database operations separate from the menu makes the code easier to follow
+and test. The failed-sale test checks the entire database, showing that stock, sale
+items, and movement records all roll back together.
 
-The separation between the menu and database functions makes the transaction behavior
-clear. The menu collects input and displays results, while database functions receive
-a connection and enforce the actual changes. A failed sale is checked against a full
-database snapshot, which gives stronger evidence than checking only the remaining
-stock. Storing the price on each sale item also keeps historical revenue correct when
-a product's current price changes.
+If I rebuilt the project, I would settle the module and function names earlier to
+avoid updating imports late in development. I would also give each report its own
+display function so formatting does not depend on menu numbers.
 
-If rebuilding this project, the first improvement would be to settle the database
-module name and public function names earlier. Renaming the module late required
-updates across the menu, seed script, fixtures, and tests. The report display could
-also use separate named display functions so its formatting does not depend on menu
-numbers. Both changes would make later maintenance easier without adding much code.
-
-One area for a reviewer to check is transaction ownership. The stock functions are
-designed to own their complete transaction, and helpers deliberately do not commit.
-Calling these public functions while another transaction is already active deserves
-careful review because the connection context can affect pending work. Backup handling
-is another practical limitation: the menu finishes its writes before backing up, and
-the dated filename replaces an earlier backup made in the same folder on that day.
-A future version could make retention and backup timing more explicit. The current
-release keeps these choices simple and documents them rather than adding more menu
-options.
+I would want a reviewer to check transaction ownership, especially what happens if
+a stock function is called during an existing transaction. Backup retention could
+also improve: making two backups in the same folder on the same day replaces the
+earlier copy.
