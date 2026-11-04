@@ -1,6 +1,9 @@
 from contextlib import closing
+
 import pytest
+
 from inventory_db import connect, setup_database
+
 
 @pytest.fixture
 def connection():

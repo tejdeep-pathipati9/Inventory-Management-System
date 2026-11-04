@@ -1,7 +1,9 @@
 import sqlite3
 from contextlib import closing
 from decimal import Decimal, DecimalException
+
 import inventory_db as db
+
 
 def parse_price(text):
     """Convert a price such as 12.99 to whole cents without rounding."""

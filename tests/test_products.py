@@ -1,5 +1,7 @@
 import sqlite3
+
 import pytest
+
 from inventory_db import (
     add_product,
     change_price,
